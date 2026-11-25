@@ -879,24 +879,20 @@
       statusEl.className = "form-status";
 
       try {
-        const res = await fetch("https://formsubmit.co/ajax/kaneadeyemi@gmail.com", {
+        const res = await fetch("/api/scope", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
             package: activePackage,
             scope,
-            _subject: `New scope request: ${activePackage}`,
-            _replyto: email,
+            _honey: form.elements._honey.value,
           }),
         });
 
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === "false" || data.success === false) {
-          throw new Error(data.message || "Request failed");
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Request failed");
         }
 
         statusEl.textContent = "Sent! I'll reply within 24 hours.";
