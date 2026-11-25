@@ -417,6 +417,113 @@
       gap: 8px;
       padding-top: 8px;
     }
+
+    /* Scope modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 9, 11, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .modal-close:hover {
+      color: var(--fg);
+      background: var(--surface-alt);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg);
+      font: inherit;
+      font-size: 13.5px;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .form-status {
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .form-status.ok {
+      color: var(--success);
+    }
+
+    .form-status.err {
+      color: #dc2626;
+    }
+
+    .honeypot {
+      position: absolute;
+      left: -9999px;
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -543,12 +650,13 @@
               <li>Full code handoff in your GitHub repo</li>
             </ul>
           </div>
-          <a
-            href="mailto:kaneadeyemi@gmail.com?subject=Project%20Inquiry%3A%20Production-ize%20Prototype"
+          <button
+            type="button"
+            data-open-scope="Production-ize Your Prototype (From $400)"
             class="btn btn-primary"
           >
             Request a scope
-          </a>
+          </button>
         </div>
 
         <div class="card offer-card">
@@ -568,12 +676,13 @@
               <li>Clear setup docs so your team can run it anytime</li>
             </ul>
           </div>
-          <a
-            href="mailto:kaneadeyemi@gmail.com?subject=Project%20Inquiry%3A%20AI%20%26%20Data%20Automation"
+          <button
+            type="button"
+            data-open-scope="AI & Data Automation (From $300)"
             class="btn btn-secondary"
           >
             Request a scope
-          </a>
+          </button>
         </div>
       </div>
     </section>
@@ -648,6 +757,59 @@
     </footer>
   </div>
 
+  <!-- Scope Request Modal -->
+  <div
+    id="scope-modal"
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scope-modal-title"
+  >
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="scope-modal-title">Request a scope</h3>
+          <p id="scope-modal-pkg" class="sub" style="margin-top: 2px;"></p>
+        </div>
+        <button type="button" id="scope-close" class="modal-close" aria-label="Close">
+          &times;
+        </button>
+      </div>
+
+      <form id="scope-form" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off" />
+
+        <div class="field">
+          <label for="scope-email">Your email</label>
+          <input
+            id="scope-email"
+            name="email"
+            type="email"
+            required
+            placeholder="you@company.com"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="field">
+          <label for="scope-text">Project scope</label>
+          <textarea
+            id="scope-text"
+            name="scope"
+            required
+            placeholder="Briefly describe what you need built or fixed, any existing repo/tools, and your ideal timeline."
+          ></textarea>
+        </div>
+
+        <p id="scope-status" class="form-status" role="status" aria-live="polite"></p>
+
+        <button type="submit" id="scope-submit" class="btn btn-primary">
+          Send scope request
+        </button>
+      </form>
+    </div>
+  </div>
+
   <script>
     const copyBtn = document.getElementById("copy-email");
     if (copyBtn && navigator.clipboard) {
@@ -663,6 +825,92 @@
         }
       });
     }
+
+    const modal = document.getElementById("scope-modal");
+    const pkgLabel = document.getElementById("scope-modal-pkg");
+    const closeBtn = document.getElementById("scope-close");
+    const form = document.getElementById("scope-form");
+    const emailInput = document.getElementById("scope-email");
+    const scopeInput = document.getElementById("scope-text");
+    const statusEl = document.getElementById("scope-status");
+    const submitBtn = document.getElementById("scope-submit");
+    let activePackage = "General project";
+
+    function openModal(pkg) {
+      activePackage = pkg || "General project";
+      pkgLabel.textContent = activePackage;
+      statusEl.textContent = "";
+      statusEl.className = "form-status";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send scope request";
+      modal.classList.add("open");
+      emailInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+    }
+
+    document.querySelectorAll("[data-open-scope]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openModal(btn.getAttribute("data-open-scope"));
+      });
+    });
+
+    closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (form.elements._honey.value) return;
+
+      const email = emailInput.value.trim();
+      const scope = scopeInput.value.trim();
+      if (!email || !scope) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending...";
+      statusEl.textContent = "";
+      statusEl.className = "form-status";
+
+      try {
+        const res = await fetch("https://formsubmit.co/ajax/kaneadeyemi@gmail.com", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            package: activePackage,
+            scope,
+            _subject: `New scope request: ${activePackage}`,
+            _replyto: email,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === "false" || data.success === false) {
+          throw new Error(data.message || "Request failed");
+        }
+
+        statusEl.textContent = "Sent! I'll reply within 24 hours.";
+        statusEl.className = "form-status ok";
+        form.reset();
+        submitBtn.textContent = "Sent";
+      } catch {
+        statusEl.textContent =
+          "Could not send right now — please email kaneadeyemi@gmail.com directly.";
+        statusEl.className = "form-status err";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Try again";
+      }
+    });
   </script>
 </body>
 </html>
